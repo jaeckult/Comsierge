@@ -15,15 +15,15 @@ services:
       - key: TWILIO_SMS_WEBHOOK_URL
         value: https://57286b692651.ngrok-free.app
         
-  - type: web
+  - type: static
     name: comsierge-frontend
-    runtime: node
     rootDir: frontend
     buildCommand: npm install && npm run build
-    startCommand: npm run preview
+    staticPublishPath: out  #  'out' for Next.js export
     envVars:
       - key: NEXT_PUBLIC_API_URL
         value: https://comsierge-backend.onrender.com
+
 
   - type: cron
     name: message-scheduler
