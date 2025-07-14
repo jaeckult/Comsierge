@@ -29,7 +29,7 @@ services:
     name: message-scheduler
     runtime: node
     rootDir: backend
-    buildCommand: npm install
+    buildCommand: npm install && npx prisma generate
     startCommand: node cron/sendScheduledMessages.js
     schedule: "*/5 * * * *"  # Every 5 minutes
     envVars:
