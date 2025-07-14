@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { sendSMS } from '../../api/messages';
+import { sendSMS, scheduleMessage } from '../../api/messages';
 import { getCurrentUser, isAuthenticated } from '../../api/auth';
 import { useRouter } from 'next/navigation';
 
@@ -16,6 +16,8 @@ export default function Compose() {
   const [success, setSuccess] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [isUserAuthenticated, setIsUserAuthenticated] = useState(false);
+  const [schedule, setSchedule] = useState(false);
+  const [sendAt, setSendAt] = useState('');
 
   useEffect(() => {
     // Check authentication on client side only
@@ -48,30 +50,28 @@ export default function Compose() {
       setError('Phone number and message are required');
       return;
     }
+    if (schedule && !sendAt) {
+      setError('Please select a date and time to schedule');
+      return;
+    }
 
     try {
       setLoading(true);
       setError(null);
-      
-      const messageData = {
-        to: form.to,
-        body: form.body
-      };
-
-      if (form.mediaUrl) {
-        messageData.mediaUrl = form.mediaUrl;
+      if (schedule) {
+        // Schedule message
+        await scheduleMessage(form.to, form.body, sendAt);
+        setSuccess('Message scheduled! Redirecting to inbox...');
+      } else {
+        // Send immediately
+        await sendSMS(form.to, form.body, form.mediaUrl || null);
+        setSuccess('Message sent successfully! Redirecting to inbox...');
       }
-
-      const result = await sendSMS(form.to, form.body, form.mediaUrl || null);
-      
-      setSuccess(true);
       setForm({ to: '', body: '', mediaUrl: '' });
-      
-      // Redirect to inbox after 2 seconds
+      setSendAt('');
       setTimeout(() => {
         router.push('/inbox');
       }, 2000);
-
     } catch (err) {
       setError(err.message);
     } finally {
@@ -141,8 +141,8 @@ export default function Compose() {
         {success && (
           <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md mb-6">
             <div className="flex items-center">
-              <span className="text-green-500 mr-2">✓</span>
-              Message sent successfully! Redirecting to inbox...
+              <span className="text-green-500 mr-2">&#10003;</span>
+              {success}
             </div>
           </div>
         )}
@@ -220,6 +220,28 @@ export default function Compose() {
               <p className="mt-1 text-xs text-gray-500">
                 Add a URL to an image, video, or audio file to send as MMS
               </p>
+            </div>
+
+            {/* Schedule Option */}
+            <div>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={schedule}
+                  onChange={e => setSchedule(e.target.checked)}
+                  className="form-checkbox"
+                />
+                <span>Schedule for later</span>
+              </label>
+              {schedule && (
+                <input
+                  type="datetime-local"
+                  value={sendAt}
+                  onChange={e => setSendAt(e.target.value)}
+                  className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required={schedule}
+                />
+              )}
             </div>
 
             {/* Send Button */}

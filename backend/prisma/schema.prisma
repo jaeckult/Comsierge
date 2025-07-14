@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -19,13 +13,14 @@ model User {
   password             String
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
-  twilioPhoneNumbers   twilioPhoneNumber[]  // plural for clarity
+  twilioPhoneNumbers   twilioPhoneNumber[]
   messages             Message[]
+  scheduledMessages    ScheduledMessage[]   // NEW: relation
 }
 
 model twilioPhoneNumber {
   id                  String    @id @default(cuid())
-  twilioAuthToken     String    // store encrypted in app
+  twilioAuthToken     String
   twilioAccountSid    String
   twilioPhoneNumber   String    @unique
   isPrimary           Boolean?   @default(false)
@@ -34,6 +29,7 @@ model twilioPhoneNumber {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
   messages            Message[]
+  scheduledMessages   ScheduledMessage[]   // NEW: relation
 }
 
 model Message {
@@ -50,11 +46,28 @@ model Message {
   errorMessage        String?
   timestamp           DateTime  @default(now())
   statusTimestamp     DateTime?
-  direction           String    // "inbound" or "outbound-api"
+  direction           String
   userId              String
   user                User      @relation(fields: [userId], references: [id])
   twilioPhoneNumberId String
   twilioPhoneNumber   twilioPhoneNumber @relation(fields: [twilioPhoneNumberId], references: [id])
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+model ScheduledMessage {
+  id                  String   @id @default(cuid())
+  to                  String
+  from                String
+  body                String
+  sendAt              DateTime
+  sent                Boolean  @default(false)
+  failed              Boolean  @default(false)
+  errorMessage        String?
+  userId              String
+  user                User      @relation(fields: [userId], references: [id])
+  twilioPhoneNumberId String?
+  twilioPhoneNumber   twilioPhoneNumber? @relation(fields: [twilioPhoneNumberId], references: [id])
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 }
