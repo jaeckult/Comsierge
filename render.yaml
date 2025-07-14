@@ -1,10 +1,10 @@
 services:
   - type: web
     name: comsierge-backend
+    runtime: node
     rootDir: backend
     buildCommand: npm install
     startCommand: npm start
-    plan: free
     envVars:
       - key: DATABASE_URL
         value: postgresql://comsierge_user:0bzGlid9MyN4dK4eF4igKciTMkVKpsRb@dpg-d1qmcsodl3ps73933470-a/comsierge
@@ -17,21 +17,21 @@ services:
 
   - type: web
     name: comsierge-frontend
+    runtime: node
     rootDir: frontend
     buildCommand: npm install && npm run build
     startCommand: npm run preview
-    plan: free
     envVars:
       - key: NEXT_PUBLIC_API_URL
         value: https://comsierge-backend.onrender.com
 
   - type: cron
     name: message-scheduler
+    runtime: node
     rootDir: backend
     buildCommand: npm install
     startCommand: node cron/sendScheduledMessages.js
-    schedule: "*/5 * * * *" # runs every 5 minutes — change if needed
-    plan: free
+    schedule: "*/5 * * * *"  # Every 5 minutes
     envVars:
       - key: DATABASE_URL
         value: postgresql://comsierge_user:0bzGlid9MyN4dK4eF4igKciTMkVKpsRb@dpg-d1qmcsodl3ps73933470-a/comsierge
