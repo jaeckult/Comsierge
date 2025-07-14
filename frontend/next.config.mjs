@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  allowedDevOrigins: ['https://comsierge-frontend.onrender.com'],
   experimental: {
-    allowedDevOrigins: ['https://comsierge-frontend.onrender.com'],
+    // other experimental flags (if any)
   },
 };
 

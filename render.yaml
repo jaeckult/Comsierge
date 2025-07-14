@@ -20,7 +20,7 @@ services:
     runtime: node
     rootDir: frontend
     buildCommand: npm install && npm run build
-    startCommand: npm run dev  # or "next start" depending on your scripts
+    startCommand: npm start  # or "next start" depending on your scripts
     envVars:
       - key: NEXT_PUBLIC_API_URL
         value: https://comsierge-backend.onrender.com

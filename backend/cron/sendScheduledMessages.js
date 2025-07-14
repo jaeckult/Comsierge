@@ -70,9 +70,9 @@ async function sendScheduledMessages() {
   }
 }
 
-// Schedule the job to run every minute
-cron.schedule('* * * * *', async () => {
-  console.log('Checking for scheduled messages...');
+// Schedule the job to run every hour
+cron.schedule('0 * * * *', async () => {
+  console.log('Checking for scheduled messages...');  
   await sendScheduledMessages();
 });
 
