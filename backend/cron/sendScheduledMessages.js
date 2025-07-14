@@ -55,7 +55,7 @@ async function sendScheduledMessages() {
           messageStatus: twilioMessage.status,
           timestamp: new Date(),
           userId: msg.userId,
-          direction: 'outbound-api',
+          direction: 'outbound',
           twilioPhoneNumberId: twilioPhone.id
         }
       });

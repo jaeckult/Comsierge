@@ -101,3 +101,31 @@ export const scheduleMessage = async (to, body, sendAt) => {
 export const getScheduledMessages = async () => {
   return makeAuthenticatedRequest(`${API_BASE_URL}/schedule`);
 }; 
+
+// Forward a message
+export const forwardMessage = async (originalMessageId, to, body = null, mediaUrl = null) => {
+  const payload = { originalMessageId, to };
+  if (body) payload.body = body;
+  if (mediaUrl) payload.mediaUrl = mediaUrl;
+  return makeAuthenticatedRequest(`${API_BASE_URL}/messages/forward`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}; 
+
+// Broadcast a message to multiple contacts
+export const broadcastMessages = async (toNumbers, body, mediaUrl = null) => {
+  const payload = { toNumbers, body };
+  if (mediaUrl) payload.mediaUrl = mediaUrl;
+  return makeAuthenticatedRequest(`${API_BASE_URL}/messages/broadcast`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+};
+
+// Cancel a scheduled message
+export const cancelScheduledMessage = async (scheduledMessageId) => {
+  return makeAuthenticatedRequest(`${API_BASE_URL}/schedule/${scheduledMessageId}/cancel`, {
+    method: 'POST'
+  });
+}; 

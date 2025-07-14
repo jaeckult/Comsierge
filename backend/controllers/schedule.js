@@ -57,4 +57,23 @@ scheduleMessageRouter.get('/', identifyUser, async (req, res) => {
   }
 });
 
+// Cancel a scheduled message
+scheduleMessageRouter.post('/:id/cancel', identifyUser, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const scheduledMessageId = req.params.id;
+    const scheduled = await prisma.scheduledMessage.updateMany({
+      where: { id: scheduledMessageId, userId, sent: false, failed: false },
+      data: { failed: true, errorMessage: 'Cancelled by user' }
+    });
+    if (scheduled.count === 0) {
+      return res.status(404).json({ error: 'Scheduled message not found or already sent/failed' });
+    }
+    res.json({ message: 'Scheduled message cancelled' });
+  } catch (error) {
+    console.error('Cancel scheduled message error:', error);
+    res.status(500).json({ error: 'Failed to cancel scheduled message', details: error.message });
+  }
+});
+
 module.exports = scheduleMessageRouter;

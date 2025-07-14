@@ -56,8 +56,6 @@ const identifyUser = async (req, res, next) => {
   } catch (error) {
     console.error('Error verifying token:', error);
     return res.status(403).json({ error: 'Forbidden - Invalid token' });
-  } finally {
-    await prisma.$disconnect();
   }
 };
 
@@ -78,8 +76,6 @@ const requireVerification = async (req, res, next) => {
   } catch (error) {
     console.error('Error checking verification status:', error);
     return res.status(500).json({ error: 'Internal server error' });
-  } finally {
-    await prisma.$disconnect();
   }
 };
 
