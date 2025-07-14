@@ -15,6 +15,7 @@ const prisma = new PrismaClient();
 const twilio = require('twilio');
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // Support x-www-form-urlencoded (Twilio)
 app.use(cors())
 app.use(getTokenFrom);
 

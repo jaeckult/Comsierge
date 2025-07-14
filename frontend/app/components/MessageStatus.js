@@ -119,38 +119,41 @@ const StatusSummary = () => {
   if (!summary) return null;
 
   return (
-    <div className="bg-white rounded-lg shadow p-4">
-      <h3 className="text-lg font-semibold mb-4">Message Status Summary</h3>
-      
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        {summary.statusSummary.map((item) => (
-          <div key={item.status} className="text-center">
-            <div className="text-2xl font-bold text-blue-600">{item.count}</div>
-            <div className="text-sm text-gray-600 capitalize">{item.status}</div>
+  <div className="bg-white rounded-lg shadow p-6 text-gray-900">
+    <h3 className="text-lg font-semibold mb-4 text-gray-900">Message Status Summary</h3>
+    
+    {/* Status Counters */}
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      {summary.statusSummary.map((item) => (
+        <div key={item.status} className="text-center bg-gray-50 p-4 rounded-lg shadow-sm border">
+          <div className="text-2xl font-bold text-blue-700">{item.count}</div>
+          <div className="text-sm text-gray-700 capitalize">{item.status}</div>
+        </div>
+      ))}
+    </div>
+    
+    {/* Recent Status Updates */}
+    <div>
+      <h4 className="font-medium mb-2 text-gray-900">Recent Status Updates</h4>
+      <div className="space-y-2 max-h-60 overflow-y-auto">
+        {summary.recentUpdates.map((update) => (
+          <div key={update.id} className="flex justify-between items-center text-sm border-b border-gray-200 pb-2">
+            <div className="flex items-center flex-wrap gap-2">
+              <span className="font-medium text-gray-800">{update.from} → {update.to}</span>
+              <span className={`px-2 py-1 rounded text-xs font-semibold ${getStatusColor(update.messageStatus)}`}>
+                {getStatusLabel(update.messageStatus)}
+              </span>
+            </div>
+            <div className="text-gray-500 text-xs whitespace-nowrap">
+              {new Date(update.statusTimestamp).toLocaleString()}
+            </div>
           </div>
         ))}
       </div>
-      
-      <div>
-        <h4 className="font-medium mb-2">Recent Status Updates</h4>
-        <div className="space-y-2 max-h-60 overflow-y-auto">
-          {summary.recentUpdates.map((update) => (
-            <div key={update.id} className="flex justify-between items-center text-sm border-b pb-2">
-              <div>
-                <span className="font-medium">{update.from} → {update.to}</span>
-                <span className={`ml-2 px-2 py-1 rounded text-xs ${getStatusColor(update.messageStatus)}`}>
-                  {getStatusLabel(update.messageStatus)}
-                </span>
-              </div>
-              <div className="text-gray-500 text-xs">
-                {new Date(update.statusTimestamp).toLocaleString()}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
-  );
+  </div>
+);
+
 };
 
 // Helper functions for status colors and labels

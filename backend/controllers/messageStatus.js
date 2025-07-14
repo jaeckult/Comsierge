@@ -70,7 +70,7 @@ messageStatusRouter.post('/', async (req, res) => {
           errorMessage: ErrorMessage || null,
           timestamp: Timestamp ? new Date(Timestamp) : new Date(),
           statusTimestamp: new Date(),
-          direction: 'outbound-api', // Assume outbound for status updates
+          direction: 'outbound', // Assume outbound for status updates
           userId: user.id,
           twilioPhoneNumberId: user.twilioPhoneNumbers.find(p => 
             p.twilioPhoneNumber === From || p.twilioPhoneNumber === To
