@@ -3,7 +3,7 @@ services:
     name: comsierge-backend
     runtime: node
     rootDir: backend
-    buildCommand: npm install
+    buildCommand: npm install && npx prisma generate
     startCommand: npm start
     envVars:
       - key: DATABASE_URL
@@ -14,7 +14,7 @@ services:
         value: 3000
       - key: TWILIO_SMS_WEBHOOK_URL
         value: https://57286b692651.ngrok-free.app
-
+        
   - type: web
     name: comsierge-frontend
     runtime: node
