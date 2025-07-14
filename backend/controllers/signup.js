@@ -3,7 +3,7 @@ const signupRouter = express.Router();
 const bcrypt = require('bcrypt');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-const { client } = require('../utils/twilioClient');
+const twilio = require('twilio');
 
 signupRouter.post('/', async (req, res) => {
   console.log('Received signup request:', req.body);
@@ -43,7 +43,6 @@ signupRouter.post('/', async (req, res) => {
         username,
         twilioPhoneNumbers: {
           create: {
-            
             twilioAuthToken,
             twilioAccountSid: twilioSid,
             twilioPhoneNumber,
@@ -53,6 +52,36 @@ signupRouter.post('/', async (req, res) => {
       },
       include: { twilioPhoneNumbers: true }
     });
+
+    // Configure Twilio webhooks for the phone number
+    try {
+      // Create Twilio client with user's credentials
+      const twilioClient = twilio(twilioSid, twilioAuthToken);
+      
+      // Get the phone number SID
+      const phoneNumbers = await twilioClient.incomingPhoneNumbers.list({
+        phoneNumber: twilioPhoneNumber
+      });
+
+      if (phoneNumbers.length > 0) {
+        const phoneNumberSid = phoneNumbers[0].sid;
+        
+        // Configure webhooks
+        await twilioClient.incomingPhoneNumbers(phoneNumberSid).update({
+          smsUrl: `${process.env.TWILIO_SMS_WEBHOOK_URL}/api/smsWebhook`,
+          smsMethod: 'POST',
+          statusCallback: `${process.env.TWILIO_SMS_WEBHOOK_URL}/api/messageStatus`,
+          statusCallbackMethod: 'POST'
+        });
+
+        console.log('Twilio webhooks configured successfully for:', twilioPhoneNumber);
+      } else {
+        console.warn('Phone number not found in Twilio account:', twilioPhoneNumber);
+      }
+    } catch (twilioError) {
+      console.error('Failed to configure Twilio webhooks:', twilioError);
+      // Don't fail the signup, just log the error
+    }
 
     res.status(201).json({
       message: 'User created successfully',

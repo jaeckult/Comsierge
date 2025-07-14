@@ -12,6 +12,7 @@ datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
+
 model User {
   id                   String               @id @default(cuid())
   username             String               @unique
@@ -19,6 +20,7 @@ model User {
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
   twilioPhoneNumbers   twilioPhoneNumber[]  // plural for clarity
+  messages             Message[]
 }
 
 model twilioPhoneNumber {
@@ -29,6 +31,30 @@ model twilioPhoneNumber {
   isPrimary           Boolean?   @default(false)
   userId              String
   user                User      @relation(fields: [userId], references: [id])
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  messages            Message[]
+}
+
+model Message {
+  id                  String    @id @default(cuid())
+  messageSid          String    @unique
+  accountSid          String
+  from                String
+  to                  String
+  body                String
+  numMedia            Int       @default(0)
+  mediaUrl            String?
+  messageStatus       String    @default("queued")
+  errorCode           String?
+  errorMessage        String?
+  timestamp           DateTime  @default(now())
+  statusTimestamp     DateTime?
+  direction           String    // "inbound" or "outbound-api"
+  userId              String
+  user                User      @relation(fields: [userId], references: [id])
+  twilioPhoneNumberId String
+  twilioPhoneNumber   twilioPhoneNumber @relation(fields: [twilioPhoneNumberId], references: [id])
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 }
