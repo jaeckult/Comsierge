@@ -33,7 +33,7 @@ services:
     rootDir: backend
     buildCommand: npm install && npx prisma generate
     startCommand: node cron/sendScheduledMessages.js
-    schedule: "*/5 * * * *"  # Every 5 minutes
+    schedule: "*/60 * * * *"  # Every 60 minutes
     envVars:
       - key: DATABASE_URL
         value: postgresql://comsierge_user:0bzGlid9MyN4dK4eF4igKciTMkVKpsRb@dpg-d1qmcsodl3ps73933470-a/comsierge
