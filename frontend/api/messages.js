@@ -87,3 +87,17 @@ export const deleteMessage = async (messageId) => {
     method: 'DELETE',
   });
 }; 
+
+// Schedule a message
+export const scheduleMessage = async (to, body, sendAt) => {
+  const payload = { to, body, sendAt };
+  return makeAuthenticatedRequest(`${API_BASE_URL}/schedule`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}; 
+
+// Get scheduled messages
+export const getScheduledMessages = async () => {
+  return makeAuthenticatedRequest(`${API_BASE_URL}/schedule`);
+}; 

@@ -36,6 +36,11 @@ const MessageStatus = ({ messageId, initialStatus, onStatusUpdate }) => {
   };
 
   const handleCheckStatus = async () => {
+    // If the message is scheduled, show a friendly message
+    if (status === 'scheduled') {
+      setError('This message is scheduled and has not been sent yet.');
+      return;
+    }
     setLoading(true);
     setError(null);
     

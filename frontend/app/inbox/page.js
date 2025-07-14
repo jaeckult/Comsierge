@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { getMessages, deleteMessage, updateMessageStatus } from '../../api/messages';
+import { getMessages, deleteMessage, updateMessageStatus, getScheduledMessages } from '../../api/messages';
 import { getCurrentUser, isAuthenticated } from '../../api/auth';
 import { useRouter } from 'next/navigation';
 import { MessageStatus, StatusSummary } from '../components/MessageStatus';
@@ -26,6 +26,7 @@ export default function Inbox() {
     hasMore: false
   });
   const [showStatusSummary, setShowStatusSummary] = useState(false);
+  const [scheduledMessages, setScheduledMessages] = useState([]);
 
   useEffect(() => {
     // Check authentication on client side only
@@ -59,9 +60,12 @@ export default function Inbox() {
         ...filters,
         offset: pagination.offset
       };
-      
-      const data = await getMessages(queryParams);
+      const [data, scheduledData] = await Promise.all([
+        getMessages(queryParams),
+        getScheduledMessages()
+      ]);
       setMessages(data.messages);
+      setScheduledMessages(scheduledData.scheduled || []);
       setPagination(data.pagination);
       setError(null);
     } catch (err) {
@@ -101,7 +105,25 @@ export default function Inbox() {
     ));
   };
 
-  const filteredMessages = messages.filter(message =>
+  // Merge scheduled messages as 'queued' (status: scheduled) and sort
+  const allMessages = [
+    ...messages,
+    ...scheduledMessages.map(msg => ({
+      ...msg,
+      id: msg.id + '-scheduled',
+      messageStatus: 'scheduled',
+      direction: 'outbound-api',
+      timestamp: msg.sendAt,
+      from: msg.from,
+      to: msg.to,
+      body: msg.body,
+      errorMessage: msg.errorMessage || null,
+      statusTimestamp: msg.updatedAt,
+      twilioPhoneNumber: msg.twilioPhoneNumber || null,
+    }))
+  ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+  const filteredMessages = allMessages.filter(message =>
     message.body.toLowerCase().includes(searchTerm.toLowerCase()) ||
     message.from.includes(searchTerm) ||
     message.to.includes(searchTerm)

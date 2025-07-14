@@ -8,7 +8,7 @@ const smsWebhookRouter = require('./controllers/smsWebhook');
 const messageStatusRouter = require('./controllers/messageStatus');
 const messagesRouter = require('./controllers/messages');
 // const conversationsRouter = require('./controllers/conversations')
-// const contactRouter = require('./controllers/contact');
+const scheduleMessageRouter = require('./controllers/schedule');
 const { getTokenFrom, identifyUser } = require('./utils/middleware');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
@@ -24,7 +24,7 @@ app.use('/api/signup', signupRouter);
 app.use('/api/smsWebhook', smsWebhookRouter);
 app.use('/api/messageStatus', messageStatusRouter);
 app.use('/api/messages', messagesRouter);
-// app.use('/api/conversations', conversationsRouter);
+app.use('/api/schedule', scheduleMessageRouter);
 // app.use('/api/contacts', contactRouter);
 
 app.get('/', (req, res)=>{
