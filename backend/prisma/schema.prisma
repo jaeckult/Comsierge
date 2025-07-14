@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,48 +7,116 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum MessageDirection {
+  inbound
+  outbound
+}
+
 model User {
   id                   String               @id @default(cuid())
   username             String               @unique
   password             String
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
-  twilioPhoneNumbers   twilioPhoneNumber[]  // plural for clarity
+  twilioPhoneNumbers   TwilioPhoneNumber[]
   messages             Message[]
+  scheduledMessages    ScheduledMessage[]
+  messageForwardings   MessageForwarding[]
+  contacts             Contact[]
 }
 
-model twilioPhoneNumber {
-  id                  String    @id @default(cuid())
-  twilioAuthToken     String    // store encrypted in app
-  twilioAccountSid    String
-  twilioPhoneNumber   String    @unique
-  isPrimary           Boolean?   @default(false)
-  userId              String
-  user                User      @relation(fields: [userId], references: [id])
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-  messages            Message[]
+model TwilioPhoneNumber {
+  id                   String               @id @default(cuid())
+  twilioAuthToken      String
+  twilioAccountSid     String
+  twilioPhoneNumber    String               @unique
+  isPrimary            Boolean?             @default(false)
+  userId               String
+  user                 User                 @relation(fields: [userId], references: [id])
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  messages             Message[]
+  scheduledMessages    ScheduledMessage[]
 }
 
 model Message {
-  id                  String    @id @default(cuid())
-  messageSid          String    @unique
-  accountSid          String
-  from                String
-  to                  String
-  body                String
-  numMedia            Int       @default(0)
-  mediaUrl            String?
-  messageStatus       String    @default("queued")
-  errorCode           String?
-  errorMessage        String?
-  timestamp           DateTime  @default(now())
-  statusTimestamp     DateTime?
-  direction           String    // "inbound" or "outbound-api"
-  userId              String
-  user                User      @relation(fields: [userId], references: [id])
-  twilioPhoneNumberId String
-  twilioPhoneNumber   twilioPhoneNumber @relation(fields: [twilioPhoneNumberId], references: [id])
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  id                   String               @id @default(cuid())
+  messageSid           String               @unique
+  accountSid           String
+  from                 String
+  to                   String
+  body                 String
+  numMedia             Int                  @default(0)
+  mediaUrl             String?
+  messageStatus        String               @default("queued")
+  errorCode            String?
+  errorMessage         String?
+  timestamp            DateTime             @default(now())
+  statusTimestamp      DateTime?
+  direction            MessageDirection
+  userId               String
+  user                 User                 @relation(fields: [userId], references: [id])
+  twilioPhoneNumberId  String
+  twilioPhoneNumber    TwilioPhoneNumber    @relation(fields: [twilioPhoneNumberId], references: [id])
+  forwarded            Boolean              @default(false)
+  forwardedTo          String?              // If forwarded, the number it was sent to
+  originalMessageId    String?              // For linking back to the original
+  originalMessage      Message?             @relation("ForwardedFrom", fields: [originalMessageId], references: [id])
+  forwardedMessages    Message[]            @relation("ForwardedFrom")
+  originalForwardings  MessageForwarding[] @relation("OriginalMessage")
+  forwardedForwardings MessageForwarding[] @relation("ForwardedMessage")
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  @@index([messageSid])
+  @@index([userId])
+  @@index([twilioPhoneNumberId])
+}
+
+model ScheduledMessage {
+  id                   String               @id @default(cuid())
+  to                   String
+  from                 String
+  body                 String
+  sendAt               DateTime
+  sent                 Boolean              @default(false)
+  failed               Boolean              @default(false)
+  errorMessage         String?
+  userId               String
+  user                 User                 @relation(fields: [userId], references: [id])
+  twilioPhoneNumberId  String?
+  twilioPhoneNumber    TwilioPhoneNumber?   @relation(fields: [twilioPhoneNumberId], references: [id])
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  @@index([sendAt])
+  @@index([userId])
+}
+
+model MessageForwarding {
+  id                String   @id @default(cuid())
+  originalMessageId String
+  forwardedMessageId String
+  forwardedAt       DateTime @default(now())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id])
+  originalMessage   Message  @relation("OriginalMessage", fields: [originalMessageId], references: [id])
+  forwardedMessage  Message  @relation("ForwardedMessage", fields: [forwardedMessageId], references: [id])
+
+  @@index([originalMessageId])
+  @@index([forwardedMessageId])
+  @@index([userId])
+}
+
+model Contact {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, phone])
+  @@index([userId])
 }

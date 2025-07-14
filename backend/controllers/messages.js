@@ -66,7 +66,7 @@ messagesRouter.post('/sendSMS', identifyUser, async (req, res) => {
         messageStatus: twilioMessage.status, // Initial status from Twilio
         timestamp: new Date(),
         userId: userId,
-        direction: 'outbound-api',
+        direction: 'outbound',
         twilioPhoneNumberId: twilioPhone.id
       }
     });
@@ -116,20 +116,29 @@ messagesRouter.get('/', identifyUser, async (req, res) => {
       from,
       to,
       startDate,
-      endDate 
+      endDate,
+      conversationWith // NEW
     } = req.query;
 
     // Build where clause
     const where = { userId: userId };
 
-    if (direction) where.direction = direction;
-    if (status) where.messageStatus = status;
-    if (from) where.from = from;
-    if (to) where.to = to;
-    if (startDate || endDate) {
-      where.timestamp = {};
-      if (startDate) where.timestamp.gte = new Date(startDate);
-      if (endDate) where.timestamp.lte = new Date(endDate);
+    if (conversationWith) {
+      // Fetch all messages where from or to matches the contact's phone
+      where.OR = [
+        { from: conversationWith },
+        { to: conversationWith }
+      ];
+    } else {
+      if (direction) where.direction = direction;
+      if (status) where.messageStatus = status;
+      if (from) where.from = from;
+      if (to) where.to = to;
+      if (startDate || endDate) {
+        where.timestamp = {};
+        if (startDate) where.timestamp.gte = new Date(startDate);
+        if (endDate) where.timestamp.lte = new Date(endDate);
+      }
     }
 
     const messages = await prisma.message.findMany({
@@ -282,7 +291,7 @@ messagesRouter.get('/:id/check-status', identifyUser, async (req, res) => {
       where: { id: messageId },
       data: {
         messageStatus: twilioMessage.status,
-        errorCode: twilioMessage.errorCode || null,
+        errorCode: twilioMessage.errorCode !== undefined && twilioMessage.errorCode !== null ? String(twilioMessage.errorCode) : null,
         errorMessage: twilioMessage.errorMessage || null,
         statusTimestamp: new Date()
       }
@@ -351,6 +360,142 @@ messagesRouter.get('/status/summary', identifyUser, async (req, res) => {
   } catch (error) {
     console.error('Get status summary error:', error);
     res.status(500).json({ error: 'Failed to get status summary', details: error.message });
+  }
+});
+
+// Forward a message
+messagesRouter.post('/forward', identifyUser, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { originalMessageId, to, body, mediaUrl } = req.body;
+    if (!originalMessageId || !to) {
+      return res.status(400).json({ error: 'originalMessageId and to are required' });
+    }
+    // Find the original message
+    const originalMessage = await prisma.message.findUnique({
+      where: { id: originalMessageId },
+      include: { twilioPhoneNumber: true }
+    });
+    if (!originalMessage) {
+      return res.status(404).json({ error: 'Original message not found' });
+    }
+    // Get user's Twilio credentials
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { twilioPhoneNumbers: { where: { isPrimary: true } } }
+    });
+    if (!user || !user.twilioPhoneNumbers.length) {
+      return res.status(400).json({ error: 'No Twilio phone number configured' });
+    }
+    const twilioPhone = user.twilioPhoneNumbers[0];
+    const twilioClient = twilio(twilioPhone.twilioAccountSid, twilioPhone.twilioAuthToken);
+    // Compose the forwarded message
+    const messageData = {
+      body: body || originalMessage.body,
+      from: twilioPhone.twilioPhoneNumber,
+      to: to,
+      statusCallback: `${process.env.TWILIO_SMS_WEBHOOK_URL}/api/messageStatus`,
+      statusCallbackMethod: 'POST'
+    };
+    if (mediaUrl || originalMessage.mediaUrl) {
+      messageData.mediaUrl = [mediaUrl || originalMessage.mediaUrl];
+    }
+    // Send the forwarded SMS
+    const twilioMessage = await twilioClient.messages.create(messageData);
+    // Store the forwarded message in the database
+    const forwardedMessage = await prisma.message.create({
+      data: {
+        messageSid: twilioMessage.sid,
+        accountSid: twilioMessage.accountSid,
+        from: twilioMessage.from,
+        to: twilioMessage.to,
+        body: twilioMessage.body,
+        numMedia: parseInt(twilioMessage.numMedia) || 0,
+        mediaUrl: mediaUrl || originalMessage.mediaUrl || null,
+        messageStatus: twilioMessage.status,
+        timestamp: new Date(),
+        userId: userId,
+        direction: 'outbound',
+        twilioPhoneNumberId: twilioPhone.id,
+        forwarded: true,
+        forwardedTo: to,
+        originalMessageId: originalMessage.id
+      }
+    });
+    // Create a MessageForwarding record
+    await prisma.messageForwarding.create({
+      data: {
+        originalMessageId: originalMessage.id,
+        forwardedMessageId: forwardedMessage.id,
+        userId: userId
+      }
+    });
+    res.status(201).json({
+      message: 'Message forwarded successfully',
+      forwardedMessage,
+      originalMessageId: originalMessage.id
+    });
+  } catch (error) {
+    console.error('Forward message error:', error);
+    res.status(500).json({ error: 'Failed to forward message', details: error.message });
+  }
+});
+
+// Broadcast a message to multiple contacts
+messagesRouter.post('/broadcast', identifyUser, async (req, res) => {
+  try {
+    const { toNumbers, body, mediaUrl } = req.body;
+    const userId = req.user.id;
+    if (!Array.isArray(toNumbers) || toNumbers.length === 0 || !body) {
+      return res.status(400).json({ error: 'toNumbers (array) and body are required' });
+    }
+    // Get user's Twilio credentials
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { twilioPhoneNumbers: { where: { isPrimary: true } } }
+    });
+    if (!user || !user.twilioPhoneNumbers.length) {
+      return res.status(400).json({ error: 'No Twilio phone number configured' });
+    }
+    const twilioPhone = user.twilioPhoneNumbers[0];
+    const twilioClient = twilio(twilioPhone.twilioAccountSid, twilioPhone.twilioAuthToken);
+    const results = [];
+    for (const to of toNumbers) {
+      try {
+        const messageData = {
+          body,
+          from: twilioPhone.twilioPhoneNumber,
+          to,
+          statusCallback: `${process.env.TWILIO_SMS_WEBHOOK_URL}/api/messageStatus`,
+          statusCallbackMethod: 'POST'
+        };
+        if (mediaUrl) messageData.mediaUrl = [mediaUrl];
+        const twilioMessage = await twilioClient.messages.create(messageData);
+        const message = await prisma.message.create({
+          data: {
+            messageSid: twilioMessage.sid,
+            accountSid: twilioMessage.accountSid,
+            from: twilioMessage.from,
+            to: twilioMessage.to,
+            body: twilioMessage.body,
+            numMedia: parseInt(twilioMessage.numMedia) || 0,
+            mediaUrl: mediaUrl || null,
+            messageStatus: twilioMessage.status,
+            timestamp: new Date(),
+            userId: userId,
+            direction: 'outbound',
+            twilioPhoneNumberId: twilioPhone.id
+          }
+        });
+        results.push({ to, status: 'sent', message });
+      } catch (err) {
+        results.push({ to, status: 'failed', error: err.message });
+      }
+    }
+    res.status(201).json({ message: 'Broadcast complete', results });
+  } catch (error) {
+    console.error('Broadcast error:', error);
+    res.status(500).json({ error: 'Failed to broadcast messages', details: error.message });
   }
 });
 

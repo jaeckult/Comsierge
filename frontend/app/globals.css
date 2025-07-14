@@ -19,8 +19,12 @@
   }
 }
 
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+body {
+  background-color: #ffffff; /* or Tailwind's bg-white */
 }

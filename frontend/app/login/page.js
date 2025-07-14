@@ -89,7 +89,7 @@ export default function Login() {
               </div>
             </div>
 
-            <div>
+    <div>
               <button
                 type="submit"
                 disabled={loading}
@@ -105,7 +105,7 @@ export default function Login() {
                 )}
               </button>
             </div>
-          </form>
+      </form>
 
           <div className="mt-6">
             <div className="relative">

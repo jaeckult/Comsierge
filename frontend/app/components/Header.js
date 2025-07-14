@@ -53,6 +53,12 @@ export default function Header() {
                   Inbox
                 </Link>
                 <Link 
+                  href="/contacts"
+                  className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium transition-colors"
+                >
+                  Contacts
+                </Link>
+                <Link 
                   href="/compose"
                   className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium transition-colors"
                 >

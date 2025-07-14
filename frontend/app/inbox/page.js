@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { getMessages, deleteMessage, updateMessageStatus } from '../../api/messages';
+import { getMessages, deleteMessage, updateMessageStatus, getScheduledMessages, forwardMessage, cancelScheduledMessage } from '../../api/messages';
 import { getCurrentUser, isAuthenticated } from '../../api/auth';
 import { useRouter } from 'next/navigation';
 import { MessageStatus, StatusSummary } from '../components/MessageStatus';
@@ -13,7 +13,7 @@ export default function Inbox() {
   const [authChecked, setAuthChecked] = useState(false);
   const [isUserAuthenticated, setIsUserAuthenticated] = useState(false);
   const [filters, setFilters] = useState({
-    direction: '',
+    direction: '', // Show all directions by default
     status: '',
     limit: 20
   });
@@ -26,6 +26,14 @@ export default function Inbox() {
     hasMore: false
   });
   const [showStatusSummary, setShowStatusSummary] = useState(false);
+  const [scheduledMessages, setScheduledMessages] = useState([]);
+  const [showForwardModal, setShowForwardModal] = useState(false);
+  const [forwardTo, setForwardTo] = useState('');
+  const [forwarding, setForwarding] = useState(false);
+  const [forwardError, setForwardError] = useState(null);
+  const [forwardSuccess, setForwardSuccess] = useState(null);
+  const [forwardMessageId, setForwardMessageId] = useState(null);
+  const [messageType, setMessageType] = useState('all'); // 'all', 'forwarded', 'original'
 
   useEffect(() => {
     // Check authentication on client side only
@@ -59,9 +67,12 @@ export default function Inbox() {
         ...filters,
         offset: pagination.offset
       };
-      
-      const data = await getMessages(queryParams);
+      const [data, scheduledData] = await Promise.all([
+        getMessages(queryParams),
+        getScheduledMessages()
+      ]);
       setMessages(data.messages);
+      setScheduledMessages(scheduledData.scheduled || []);
       setPagination(data.pagination);
       setError(null);
     } catch (err) {
@@ -101,11 +112,43 @@ export default function Inbox() {
     ));
   };
 
-  const filteredMessages = messages.filter(message =>
+  const handleCancelScheduled = async (scheduledId) => {
+    if (!confirm('Cancel this scheduled message?')) return;
+    try {
+      await cancelScheduledMessage(scheduledId);
+      fetchMessages();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  // Merge scheduled messages as 'queued' (status: scheduled) and sort
+  const allMessages = [
+    ...messages,
+    ...scheduledMessages.map(msg => ({
+      ...msg,
+      id: msg.id + '-scheduled',
+      messageStatus: msg.failed && msg.errorMessage === 'Cancelled by user' ? 'canceled' : 'scheduled',
+      direction: 'outbound',
+      timestamp: msg.sendAt,
+      from: msg.from,
+      to: msg.to,
+      body: msg.body,
+      errorMessage: msg.errorMessage || null,
+      statusTimestamp: msg.updatedAt,
+      twilioPhoneNumber: msg.twilioPhoneNumber || null,
+    }))
+  ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+  const filteredMessages = allMessages.filter(message =>
     message.body.toLowerCase().includes(searchTerm.toLowerCase()) ||
     message.from.includes(searchTerm) ||
     message.to.includes(searchTerm)
-  );
+  ).filter(message => {
+    if (messageType === 'forwarded') return message.forwarded;
+    if (messageType === 'original') return !message.forwarded;
+    return true;
+  });
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -164,7 +207,7 @@ export default function Inbox() {
           <div className="flex justify-between items-center py-6">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Inbox</h1>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-700">
                 {pagination.total} messages total
               </p>
             </div>
@@ -195,61 +238,97 @@ export default function Inbox() {
         )}
 
         {/* Filters and Search */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {/* Search */}
-            <div className="md:col-span-2">
-              <input
-                type="text"
-                placeholder="Search messages..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+<div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+    {/* Search */}
+    <div className="md:col-span-2">
+      <input
+        type="text"
+        placeholder="Search messages..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        className="w-full px-3 py-2 border border-gray-400 text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 placeholder-gray-600"
+      />
+    </div>
 
-            {/* Direction Filter */}
-            <div>
-              <select
-                value={filters.direction}
-                onChange={(e) => setFilters(prev => ({ ...prev, direction: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All Directions</option>
-                <option value="inbound">Incoming</option>
-                <option value="outbound-api">Outgoing</option>
-              </select>
-            </div>
+    {/* Direction Filter */}
+    <div>
+      <select
+        value={filters.direction}
+        onChange={(e) => setFilters(prev => ({ ...prev, direction: e.target.value }))}
+        className="w-full px-3 py-2 border border-gray-400 text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+      >
+        <option value="">All (Sent & Received)</option>
+        <option value="inbound">Incoming</option>
+        <option value="outbound">Outgoing</option>
+      </select>
+    </div>
 
-            {/* Status Filter */}
-            <div>
-              <select
-                value={filters.status}
-                onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All Status</option>
-                <option value="delivered">Delivered</option>
-                <option value="sent">Sent</option>
-                <option value="failed">Failed</option>
-                <option value="queued">Queued</option>
-                <option value="sending">Sending</option>
-                <option value="undelivered">Undelivered</option>
-                <option value="received">Received</option>
-                <option value="accepted">Accepted</option>
-                <option value="scheduled">Scheduled</option>
-                <option value="canceled">Canceled</option>
-              </select>
-            </div>
-          </div>
-        </div>
+    {/* Status Filter */}
+    <div>
+      <select
+        value={filters.status}
+        onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+        className="w-full px-3 py-2 border border-gray-400 text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+      >
+        <option value="">All Status</option>
+        <option value="delivered">Delivered</option>
+        <option value="sent">Sent</option>
+        <option value="failed">Failed</option>
+        <option value="queued">Queued</option>
+        <option value="sending">Sending</option>
+        <option value="undelivered">Undelivered</option>
+        <option value="received">Received</option>
+        <option value="accepted">Accepted</option>
+        <option value="scheduled">Scheduled</option>
+        <option value="canceled">Canceled</option>
+      </select>
+    </div>
+  </div>
+</div>
+
 
         {/* Error Display */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-6">
+          <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-md mb-6">
             {error}
           </div>
         )}
+
+        {/* Message Type Tabs */}
+<div className="flex space-x-2 mb-4">
+  <button
+    className={`px-3 py-1 rounded-md font-medium transition-colors duration-200 ${
+      messageType === 'all'
+        ? 'bg-blue-600 text-white'
+        : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+    }`}
+    onClick={() => setMessageType('all')}
+  >
+    All
+  </button>
+  <button
+    className={`px-3 py-1 rounded-md font-medium transition-colors duration-200 ${
+      messageType === 'forwarded'
+        ? 'bg-blue-600 text-white'
+        : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+    }`}
+    onClick={() => setMessageType('forwarded')}
+  >
+    Forwarded
+  </button>
+  <button
+    className={`px-3 py-1 rounded-md font-medium transition-colors duration-200 ${
+      messageType === 'original'
+        ? 'bg-blue-600 text-white'
+        : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+    }`}
+    onClick={() => setMessageType('original')}
+  >
+    Original
+  </button>
+</div>
+
 
         {/* Messages List */}
         <div className="bg-white rounded-lg shadow-sm">
@@ -259,7 +338,7 @@ export default function Inbox() {
             </div>
           ) : filteredMessages.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-500">No messages found</p>
+              <p className="text-gray-700">No messages found</p>
             </div>
           ) : (
             <div className="divide-y divide-gray-200">
@@ -279,7 +358,7 @@ export default function Inbox() {
                           <p className="text-sm font-medium text-gray-900 truncate">
                             {message.direction === 'inbound' ? message.from : message.to}
                           </p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-700">
                             {formatDate(message.timestamp)}
                           </p>
                         </div>
@@ -288,14 +367,48 @@ export default function Inbox() {
                           initialStatus={message.messageStatus}
                           onStatusUpdate={(newStatus) => handleStatusCheck(message.id, newStatus)}
                         />
+                        {message.messageStatus === 'canceled' && (
+                          <span className="ml-2 px-2 py-1 bg-gray-200 text-gray-700 rounded text-xs">Cancelled</span>
+                        )}
                       </div>
-                      <p className="text-sm text-gray-700 line-clamp-2">
+                      <p className="text-sm text-gray-800 line-clamp-2">
                         {message.body}
                       </p>
+                      {message.forwarded && (
+                        <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">Forwarded</span>
+                      )}
+                      {message.messageStatus === 'scheduled' && (
+                        <button
+                          onClick={e => {
+                            e.stopPropagation();
+                            handleCancelScheduled(message.id.replace('-scheduled', ''));
+                          }}
+                          className="text-yellow-600 hover:text-yellow-800 text-sm ml-2"
+                        >
+                          Cancel
+                        </button>
+                      )}
                     </div>
                     
                     {/* Message Actions */}
                     <div className="flex items-center space-x-2 ml-4">
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          setForwardMessageId(message.id);
+                          setShowForwardModal(true);
+                          setForwardTo('');
+                          setForwardError(null);
+                          setForwardSuccess(null);
+                        }}
+                        className="text-blue-600 hover:text-blue-800 text-sm"
+                        title="Forward"
+                      >
+                        <svg className="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                        </svg>
+                        Forward
+                      </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -327,9 +440,12 @@ export default function Inbox() {
 
         {/* Message Detail Modal */}
         {selectedMessage && (
-          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-              {/* Modal Header */}
+  <div
+    className="fixed inset-0 bg-blur bg-opacity-75 flex items-center justify-center p-4 z-50"
+    style={{ backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
+  >
+    <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+      {/* Modal content stays the same */}
               <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 rounded-t-xl">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center space-x-3">
@@ -404,6 +520,11 @@ export default function Inbox() {
                               setSelectedMessage({...selectedMessage, messageStatus: newStatus});
                             }}
                           />
+                          {selectedMessage.messageStatus === 'canceled' && (
+                            <div className="bg-gray-100 text-gray-700 px-3 py-2 rounded mt-2">
+                              This scheduled message was cancelled.
+                            </div>
+                          )}
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Timestamp</label>
@@ -541,6 +662,73 @@ export default function Inbox() {
           </div>
         )}
       </div>
+
+      {/* Forward Modal */}
+{showForwardModal && (
+  <div
+    className="fixed inset-0 bg-gray bg-opacity-50 flex items-center justify-center z-50"
+    style={{ backdropFilter: 'blur(6px)' }}
+  >
+    <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-gray-900">
+      <h2 className="text-xl font-semibold mb-4 text-gray-900">Forward Message</h2>
+
+      <label className="block text-sm font-medium text-gray-800 mb-2">
+        To (Phone Number)
+      </label>
+      <input
+        type="text"
+        value={forwardTo}
+        onChange={e => setForwardTo(e.target.value)}
+        className="w-full px-3 py-2 border border-gray-300 rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+        placeholder="Enter recipient number"
+      />
+
+      {forwardError && (
+        <div className="text-sm text-red-700 bg-red-50 border border-red-200 px-3 py-2 rounded mb-2">
+          {forwardError}
+        </div>
+      )}
+
+      {forwardSuccess && (
+        <div className="text-sm text-green-700 bg-green-50 border border-green-200 px-3 py-2 rounded mb-2">
+          {forwardSuccess}
+        </div>
+      )}
+
+      <div className="flex justify-end space-x-2 pt-4 border-t border-gray-200 mt-4">
+        <button
+          onClick={() => setShowForwardModal(false)}
+          className="px-4 py-2 text-gray-800 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={async () => {
+            setForwarding(true);
+            setForwardError(null);
+            setForwardSuccess(null);
+            try {
+              await forwardMessage(forwardMessageId, forwardTo);
+              setForwardSuccess('Message forwarded successfully!');
+              setTimeout(() => {
+                setShowForwardModal(false);
+                setForwarding(false);
+              }, 1500);
+            } catch (err) {
+              setForwardError(err.message);
+              setForwarding(false);
+            }
+          }}
+          disabled={forwarding || !forwardTo}
+          className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+        >
+          {forwarding ? 'Forwarding...' : 'Forward'}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
   );
 } 
