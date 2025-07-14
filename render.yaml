@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: comsierge-backend
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://comsierge_user:0bzGlid9MyN4dK4eF4igKciTMkVKpsRb@dpg-d1qmcsodl3ps73933470-a/comsierge
+      - key: JWT_SECRET
+        value: RANDOMSECRETKEY
+      - key: PORT
+        value: 3000
+      - key: TWILIO_SMS_WEBHOOK_URL
+        value: https://57286b692651.ngrok-free.app
+
+        
+  - type: web
+    name: comsierge-frontend
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm run preview
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: https://comsierge-backend.onrender.com
+
+
+  - type: worker
+    name: message-scheduler
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node cron/sendScheduledMessages.js
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://comsierge_user:0bzGlid9MyN4dK4eF4igKciTMkVKpsRb@dpg-d1qmcsodl3ps73933470-a/comsierge
