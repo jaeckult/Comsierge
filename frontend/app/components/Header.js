@@ -64,6 +64,12 @@ export default function Header() {
                 >
                   Compose
                 </Link>
+                <Link 
+                  href="/user-retrieval"
+                  className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium transition-colors"
+                >
+                  User Data
+                </Link>
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-600">
                     Welcome, {user?.username}

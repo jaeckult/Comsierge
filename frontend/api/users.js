@@ -145,3 +145,24 @@ export const deleteContact = async (id) => {
   if (!response.ok) throw new Error(data.error || 'Failed to delete contact');
   return data;
 }; 
+
+// Get comprehensive user data (everything)
+export const getComprehensiveUserData = async (userId) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/users/comprehensive/${userId}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to fetch comprehensive user data');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Get comprehensive user data error:', error);
+    throw error;
+  }
+}; 

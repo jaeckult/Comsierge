@@ -12,6 +12,7 @@ export {
 export {
   getAllUsers,
   getUserById,
+  getComprehensiveUserData,
   updateUser,
   deleteUser,
 } from './users.js';

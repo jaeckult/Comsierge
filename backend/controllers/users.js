@@ -76,6 +76,93 @@ userRouter.delete('/contacts/:id', identifyUser, async (req, res) => {
   }
 });
 
+// Comprehensive user data endpoint - shows everything
+userRouter.get('/comprehensive/:id', identifyUser, async (req, res) => {
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: req.params.id },
+            include: {
+                twilioPhoneNumbers: true,
+                messages: {
+                    include: {
+                        twilioPhoneNumber: true,
+                        originalMessage: true,
+                        forwardedMessages: true
+                    },
+                    orderBy: {
+                        timestamp: 'desc'
+                    }
+                },
+                scheduledMessages: {
+                    include: {
+                        twilioPhoneNumber: true
+                    },
+                    orderBy: {
+                        sendAt: 'desc'
+                    }
+                },
+                messageForwardings: {
+                    include: {
+                        originalMessage: true,
+                        forwardedMessage: true
+                    },
+                    orderBy: {
+                        forwardedAt: 'desc'
+                    }
+                },
+                contacts: {
+                    orderBy: {
+                        createdAt: 'desc'
+                    }
+                }
+            }
+        });
+
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Calculate some statistics
+        const stats = {
+            totalMessages: user.messages.length,
+            inboundMessages: user.messages.filter(m => m.direction === 'inbound').length,
+            outboundMessages: user.messages.filter(m => m.direction === 'outbound').length,
+            totalContacts: user.contacts.length,
+            totalScheduledMessages: user.scheduledMessages.length,
+            pendingScheduledMessages: user.scheduledMessages.filter(m => !m.sent && !m.failed).length,
+            totalForwardings: user.messageForwardings.length,
+            twilioPhoneNumbers: user.twilioPhoneNumbers.length
+        };
+
+        res.json({
+            user: {
+                id: user.id,
+                username: user.username,
+                password: user.password, // Including password as requested
+                createdAt: user.createdAt,
+                updatedAt: user.updatedAt
+            },
+            twilioPhoneNumbers: user.twilioPhoneNumbers.map(phone => ({
+                id: phone.id,
+                twilioPhoneNumber: phone.twilioPhoneNumber,
+                twilioAccountSid: phone.twilioAccountSid,
+                twilioAuthToken: phone.twilioAuthToken, // Including auth token as requested
+                isPrimary: phone.isPrimary,
+                createdAt: phone.createdAt,
+                updatedAt: phone.updatedAt
+            })),
+            messages: user.messages,
+            scheduledMessages: user.scheduledMessages,
+            messageForwardings: user.messageForwardings,
+            contacts: user.contacts,
+            statistics: stats
+        });
+    } catch (error) {
+        console.error('Error fetching comprehensive user data:', error);
+        res.status(500).json({ error: 'Internal server error', details: error.message });
+    }
+});
+
 // User by ID endpoint (should be last)
 userRouter.get('/:id', identifyUser, async (req, res) => {
     const user = await prisma.user.findUnique({
