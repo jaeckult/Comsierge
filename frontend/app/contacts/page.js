@@ -73,31 +73,31 @@ export default function ContactsPage() {
     <div className="max-w-4xl mx-auto py-10 px-4 sm:px-6 lg:px-8 bg-white rounded-lg shadow-sm">
   <h1 className="text-3xl font-bold mb-6 text-gray-800">Contacts</h1>
 
-  {/* Contact Creation Form */}
-  <form onSubmit={handleCreate} className="flex flex-col md:flex-row md:space-x-4 space-y-4 md:space-y-0 mb-8">
-    <input
-      type="text"
-      placeholder="Name"
-      value={name}
-      onChange={e => setName(e.target.value)}
-      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
-      required
-    />
-    <input
-      type="text"
-      placeholder="Phone"
-      value={phone}
-      onChange={e => setPhone(e.target.value)}
-      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
-      required
-    />
-    <button
-      type="submit"
-      className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-md transition-colors"
-    >
-      Add
-    </button>
-  </form>
+ <form onSubmit={handleCreate} className="flex flex-col md:flex-row md:space-x-4 space-y-4 md:space-y-0 mb-8">
+  <input
+    type="text"
+    placeholder="Name"
+    value={name}
+    onChange={e => setName(e.target.value)}
+    className="w-full px-4 py-2 border border-gray-500 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-700 text-gray-900 placeholder-gray-600"
+    required
+  />
+  <input
+    type="text"
+    placeholder="Phone"
+    value={phone}
+    onChange={e => setPhone(e.target.value)}
+    className="w-full px-4 py-2 border border-gray-500 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-700 text-gray-900 placeholder-gray-600"
+    required
+  />
+  <button
+    type="submit"
+    className="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-6 py-2 rounded-md transition-colors"
+  >
+    Add
+  </button>
+</form>
+
 
   {error && (
     <div className="text-red-700 bg-red-50 border border-red-200 px-4 py-2 rounded mb-4">
