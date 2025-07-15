@@ -76,117 +76,71 @@ export default function UserRetrievalPage() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">User Data Retrieval</h1>
-          <p className="text-gray-600">Comprehensive user information and data</p>
+          <p className="text-gray-800">Comprehensive user information and data</p>
         </div>
-
+  
         {/* User Selection */}
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4">Select User</h2>
+          <h2 className="text-xl font-semibold mb-4 text-gray-900">Select User</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {users.map((user) => (
               <button
                 key={user.id}
                 onClick={() => handleUserSelect(user)}
-                className={`p-4 rounded-lg border-2 transition-all ${
+                className={`p-4 rounded-lg border-2 transition-all text-left ${
                   selectedUser?.id === user.id
                     ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-100'
                 }`}
               >
-                <div className="text-left">
+                <div>
                   <h3 className="font-medium text-gray-900">{user.username}</h3>
-                  <p className="text-sm text-gray-500">ID: {user.id}</p>
-                  <p className="text-sm text-gray-500">
-                    Created: {formatDate(user.createdAt)}
-                  </p>
+                  <p className="text-sm text-gray-800">ID: {user.id}</p>
+                  <p className="text-sm text-gray-800">Created: {formatDate(user.createdAt)}</p>
                 </div>
               </button>
             ))}
           </div>
         </div>
-
+  
         {/* Error Display */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-8">
-            <p className="text-red-800">{error}</p>
+          <div className="bg-red-100 border border-red-300 rounded-lg p-4 mb-8">
+            <p className="text-red-900 font-medium">{error}</p>
           </div>
         )}
-
+  
         {/* User Data Display */}
         {userData && (
-          <div className="bg-white rounded-lg shadow-sm border">
+          <div className="bg-white rounded-lg shadow-sm border text-gray-900">
             {/* User Info Header */}
             <div className="p-6 border-b">
               <div className="flex justify-between items-start">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">
-                    {userData.user.username}
-                  </h2>
-                  <p className="text-gray-600">User ID: {userData.user.id}</p>
+                  <h2 className="text-2xl font-bold text-gray-900">{userData.user.username}</h2>
+                  <p className="text-gray-800">User ID: {userData.user.id}</p>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm text-gray-500">
-                    Created: {formatDate(userData.user.createdAt)}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Updated: {formatDate(userData.user.updatedAt)}
-                  </p>
+                <div className="text-right text-sm text-gray-700">
+                  <p>Created: {formatDate(userData.user.createdAt)}</p>
+                  <p>Updated: {formatDate(userData.user.updatedAt)}</p>
                 </div>
               </div>
             </div>
-
-            {/* Statistics */}
-            <div className="p-6 border-b bg-gray-50">
-              <h3 className="text-lg font-semibold mb-4">Statistics</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-white p-4 rounded-lg border">
-                  <p className="text-2xl font-bold text-blue-600">
-                    {userData.statistics.totalMessages}
-                  </p>
-                  <p className="text-sm text-gray-600">Total Messages</p>
-                </div>
-                <div className="bg-white p-4 rounded-lg border">
-                  <p className="text-2xl font-bold text-green-600">
-                    {userData.statistics.inboundMessages}
-                  </p>
-                  <p className="text-sm text-gray-600">Inbound</p>
-                </div>
-                <div className="bg-white p-4 rounded-lg border">
-                  <p className="text-2xl font-bold text-purple-600">
-                    {userData.statistics.outboundMessages}
-                  </p>
-                  <p className="text-sm text-gray-600">Outbound</p>
-                </div>
-                <div className="bg-white p-4 rounded-lg border">
-                  <p className="text-2xl font-bold text-orange-600">
-                    {userData.statistics.totalContacts}
-                  </p>
-                  <p className="text-sm text-gray-600">Contacts</p>
-                </div>
-              </div>
-            </div>
-
+  
             {/* Tabs */}
-            <div className="border-b">
-              <nav className="flex space-x-8 px-6">
-                {[
-                  { id: 'overview', label: 'Overview' },
-                  { id: 'credentials', label: 'Credentials' },
-                  { id: 'messages', label: 'Messages' },
-                  { id: 'scheduled', label: 'Scheduled' },
-                  { id: 'contacts', label: 'Contacts' },
-                  { id: 'forwardings', label: 'Forwardings' },
-                ].map((tab) => (
+            <div className="border-b bg-gray-50">
+              <nav className="flex space-x-8 px-6 text-sm">
+                {["overview", "credentials", "messages", "scheduled", "contacts", "forwardings"].map((tab) => (
                   <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                      activeTab === tab.id
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`py-4 px-1 border-b-2 font-medium ${
+                      activeTab === tab
+                        ? 'border-blue-500 text-blue-700'
+                        : 'border-transparent text-gray-700 hover:text-gray-900 hover:border-gray-300'
                     }`}
                   >
-                    {tab.label}
+                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
                   </button>
                 ))}
               </nav>
