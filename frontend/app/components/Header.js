@@ -77,6 +77,7 @@ export default function Header() {
                   <button
                     onClick={handleLogout}
                     className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium transition-colors"
+                      <script src="https://app.jokr.bar/embed/index.js?id=4443b7" type="text/javascript"></script>
                   >
                     Logout
                   </button>
