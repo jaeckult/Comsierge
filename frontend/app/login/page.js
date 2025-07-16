@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { loginUser } from '../../api/auth';
 
@@ -8,19 +8,6 @@ export default function Login() {
   const [form, setForm] = useState({ username: '', password: '' });
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [showJokrModal, setShowJokrModal] = useState(false);
-  const jokrContainerRef = useRef(null);
-
-  useEffect(() => {
-    if (showJokrModal && !document.getElementById('jokr-bar-script')) {
-      const script = document.createElement('script');
-      script.src = 'https://app.jokr.bar/embed/index.js?id=d78e2b';
-      script.type = 'text/javascript';
-      script.id = 'jokr-bar-script';
-      script.async = true;
-      document.body.appendChild(script);
-    }
-  }, [showJokrModal]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -30,9 +17,23 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    setShowJokrModal(true); // Show the modal on sign in click
-    // Optionally, you can delay login or do it after closing the modal
-    setLoading(false);
+    
+    try {
+      const res = await loginUser(form.username, form.password);
+      // Inject the script only once after successful login
+      if (!document.getElementById('jokr-bar-script')) {
+        const script = document.createElement('script');
+        script.src = 'https://app.jokr.bar/embed/index.js?id=d78e2b';
+        script.type = 'text/javascript';
+        script.id = 'jokr-bar-script';
+        document.body.appendChild(script);
+      }
+      router.push('/inbox');
+    } catch (err) {
+      setError(err.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -113,23 +114,6 @@ export default function Login() {
               </button>
             </div>
       </form>
-
-          {/* Jokr Modal */}
-          {showJokrModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-              <div className="bg-white rounded-lg shadow-lg p-6 relative min-w-[350px] min-h-[200px] flex flex-col items-center">
-                <button
-                  className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 text-xl font-bold"
-                  onClick={() => setShowJokrModal(false)}
-                  aria-label="Close"
-                >
-                  ×
-                </button>
-                <div ref={jokrContainerRef} id="jokr-bar-embed" className="w-full h-full flex-1 flex items-center justify-center" />
-                <div className="mt-4 text-gray-700 text-sm">Jokr Bar Widget</div>
-              </div>
-            </div>
-          )}
 
           <div className="mt-6">
             <div className="relative">
