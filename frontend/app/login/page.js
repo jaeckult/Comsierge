@@ -20,6 +20,14 @@ export default function Login() {
     
     try {
       const res = await loginUser(form.username, form.password);
+      // Inject the script only once after successful login
+      if (!document.getElementById('jokr-bar-script')) {
+        const script = document.createElement('script');
+        script.src = 'https://app.jokr.bar/embed/index.js?id=d78e2b';
+        script.type = 'text/javascript';
+        script.id = 'jokr-bar-script';
+        document.body.appendChild(script);
+      }
       router.push('/inbox');
     } catch (err) {
       setError(err.message || 'Login failed');
