@@ -26,5 +26,17 @@ services:
         value: https://comsierge-backend.onrender.com
   
 
+- type: cron
+    name: message-scheduler
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate
+    startCommand: node cron/sendScheduledMessages.js
+    schedule: "*/60 * * * *"  # Every 60 minutes
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://comsierge_user:0bzGlid9MyN4dK4eF4igKciTMkVKpsRb@dpg-d1qmcsodl3ps73933470-a/comsierge
+      - key: JWT_SECRET
+        value: RANDOMSECRETKEY
 
   
